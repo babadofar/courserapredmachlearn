@@ -1,0 +1,43 @@
+---
+title: "Analysis"
+author: "Christoffer Vig"
+date: "Wednesday, February 18, 2015"
+output: html_document
+---
+Analysis
+
+
+
+```{r}
+library(caret)
+library(randomForest)
+datacsv <- read.csv('pml-training.csv')
+testcsv <- read.csv('pml-testing.csv')
+table(datacsv$classe)
+summary(datacsv)
+
+```
+
+
+The "classe" variable contains the information we want to predict: We see that it contains 5 unique values.
+We therefore build a model that tries to predict this variable, using all the other variables as predictors. Since the data is very noisy we use the random forest algorithm to train. The data contains of a number of samples, and new_window = yes indiecates rows with averages. We cut these rows out since they seem to be aggregated data.
+
+
+```{r}
+
+fulltraindata <- datacsv[datacsv$new_window == 'no', ]
+pmltraining <- fulltraindata[!sapply(fulltraindata, function(x) all(x == ""|| is.na(x)))]
+pmltraining[1:8] <- list(NULL)
+modl <- randomForest(classe ~. , data = pmltraining)
+modl
+
+
+```
+
+Using random forests cross validtaion is not necessary. Random forest uses bootstrap samples, running multiple times leaving ca. one third (randmonly selected) of the test set out each time. Thereby performing cross validation as part of model building. 
+
+```{r}
+predicted <- predict(modl, newdata=testcsv)
+predicted
+
+```
