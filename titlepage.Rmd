@@ -1,43 +1,72 @@
 ---
-title: "Analysis"
+title: "Prediction Assignment Writeup for Coursera Practical Machine Learning class"
 author: "Christoffer Vig"
 date: "Wednesday, February 18, 2015"
 output: html_document
 ---
-Analysis
-
+This document was created for the prediction assignment writeup as part of Coursera Practical Machine Learning class (Johns Hopkins University). 
+I want to show how I built a machine learning algorithm to predict activity quality from activity monitors.
+More information on the dataset and the problem domain can be found at (http://groupware.les.inf.puc-rio.br/har)[http://groupware.les.inf.puc-rio.br/har]
 
 
 ```{r}
 library(caret)
-library(randomForest)
 datacsv <- read.csv('pml-training.csv')
 testcsv <- read.csv('pml-testing.csv')
+
+````
+
+The "classe" variable contains the information we want to predict. It  contains 5 unique values. 
+
+```{r}
 table(datacsv$classe)
-summary(datacsv)
 
-```
+````
 
-
-The "classe" variable contains the information we want to predict: We see that it contains 5 unique values.
-We therefore build a model that tries to predict this variable, using all the other variables as predictors. Since the data is very noisy we use the random forest algorithm to train. The data contains of a number of samples, and new_window = yes indiecates rows with averages. We cut these rows out since they seem to be aggregated data.
+The column new_window contains information on the window for prediction. Rows with column "new_window=yes"" contains statisitical calculations on the other columns, so I remove this from the dataset. 
 
 
 ```{r}
 
 fulltraindata <- datacsv[datacsv$new_window == 'no', ]
+````
+
+
+The dataset contains a lot of empty and missing data, I remove this as it will not contribute to building a model. 
+
+
+```{r}
 pmltraining <- fulltraindata[!sapply(fulltraindata, function(x) all(x == ""|| is.na(x)))]
-pmltraining[1:8] <- list(NULL)
+````
+The first eight rows contains user name, and timestamp related information that should not be considered. 
+
+```{r}
+pmltraining[1:7] <- list(NULL)
+names(pmltraining)
+````
+##Algoritm selection
+I am now left with 52 variables. Random forest is an algorithm that is especially well suited to deal with noisy data without need for extensive preprocessing. It grows decision trees using random sample with replacement (bootstrapping) and random feature selection. It has built in corrections for overfitting, the estimated class is the mean predicion of all generated trees.  
+
+```{r}
+library(randomForest)
 modl <- randomForest(classe ~. , data = pmltraining)
 modl
+````
 
 
-```
+###Cross validation/OOB error rate 
+using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases.
+This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned from the model. 
+The calculated OOB error rate is 0.028
 
-Using random forests cross validtaion is not necessary. Random forest uses bootstrap samples, running multiple times leaving ca. one third (randmonly selected) of the test set out each time. Thereby performing cross validation as part of model building. 
 
+
+##Prediction
+Predicting the classe for the testdata using the model generated.
 ```{r}
 predicted <- predict(modl, newdata=testcsv)
 predicted
 
 ```
+
+
