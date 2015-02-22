@@ -48,8 +48,15 @@ names(pmltraining)
 I am now left with 52 variables. Random forest is an algorithm that is especially well suited to deal with noisy data without need for extensive preprocessing. It grows decision trees using random sample with replacement (bootstrapping) and random feature selection. It has built in corrections for overfitting, the estimated class is the mean predicion of all generated trees.  
 
 
+###Cross validation/OOB error rate 
+Using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases.
+This means it is really not necessary to perform cross validation as part of preprocessing, the OOB error rate is returned directly from the model. But for this excercise I will split the data into train and test, in order to deliver a proper test for prediction.
+
+
+
 ##Split dataset into test and train
-To split the dataset into a training and testing set, using 60% of the data for training 
+I split the training dataset into a training and testing set, using 60% of the data for training 
+
 ```{r}
 
 intrain <- createDataPartition(pmltraining$classe,p=0.6, list=FALSE)
@@ -74,18 +81,13 @@ pred = predict(modltrain,newdata=testClas)
 confusionMatrix(data = pred,reference = testClas$classe)
 
 ````
-This reports an accuracy of 0.99, which is extremely good measure. A simple check on the variable importance will reveal something about what variables were used tree will show what variables was used to split the tree on.
+This reports an accuracy of 0.99, which is extremely good measure. A simple check on the variable importance will reveal something about what variables were most important in creating the model.
 ```{r}
  head(varImp(modltrain))
 
 ````
 
 This shows that the "roll_belt" feature was most important in deciding the class, followed by pitch_belt and yaw_belt.
-
-
-###Cross validation/OOB error rate 
-using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases.
-This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned directly from the model. 
 
 
 
