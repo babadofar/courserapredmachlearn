@@ -67,18 +67,17 @@ img {
 </div>
 
 
-<p>This document was created for the prediction assignment writeup as part of Coursera Practical Machine Learning class (Johns Hopkins University). I want to show how I built a machine learning algorithm to predict activity quality from activity monitors. More information on the dataset and the problem domain can be found at (<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>)[<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>]</p>
+<p>This document was created for the prediction assignment writeup as part of Coursera Practical Machine Learning class (Johns Hopkins University). I want to show how I built a machine learning algorithm to predict activity quality from activity monitors. More information on the dataset and the problem can be found at (<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>)[<a href="http://groupware.les.inf.puc-rio.br/har">http://groupware.les.inf.puc-rio.br/har</a>]</p>
 <pre class="r"><code>library(caret)</code></pre>
 <pre><code>## Loading required package: lattice
 ## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>datacsv &lt;- read.csv('pml-training.csv')
-testcsv &lt;- read.csv('pml-testing.csv')</code></pre>
+<pre class="r"><code>datacsv &lt;- read.csv('pml-training.csv')</code></pre>
 <p>The “classe” variable contains the information we want to predict. It contains 5 unique values.</p>
 <pre class="r"><code>table(datacsv$classe)</code></pre>
 <pre><code>## 
 ##    A    B    C    D    E 
 ## 5580 3797 3422 3216 3607</code></pre>
-<p>The column new_window contains information on the window for prediction. Rows with column “new_window=yes”&quot; contains statisitical calculations on the other columns, so I remove this from the dataset.</p>
+<p>The column new_window contains information on the time window for prediction. Rows with column “new_window=yes”&quot; contains statistical calculations on the other columns, so I remove this from the dataset.</p>
 <pre class="r"><code>fulltraindata &lt;- datacsv[datacsv$new_window == 'no', ]</code></pre>
 <p>The dataset contains a lot of empty and missing data, I remove this as it will not contribute to building a model.</p>
 <pre class="r"><code>pmltraining &lt;- fulltraindata[!sapply(fulltraindata, function(x) all(x == &quot;&quot;|| is.na(x)))]</code></pre>
@@ -106,39 +105,85 @@ names(pmltraining)</code></pre>
 <div id="algoritm-selection" class="section level2">
 <h2>Algoritm selection</h2>
 <p>I am now left with 52 variables. Random forest is an algorithm that is especially well suited to deal with noisy data without need for extensive preprocessing. It grows decision trees using random sample with replacement (bootstrapping) and random feature selection. It has built in corrections for overfitting, the estimated class is the mean predicion of all generated trees.</p>
+</div>
+<div id="split-dataset-into-test-and-train" class="section level2">
+<h2>Split dataset into test and train</h2>
+<p>To split the dataset into a training and testing set, using 60% of the data for training</p>
+<pre class="r"><code>intrain &lt;- createDataPartition(pmltraining$classe,p=0.6, list=FALSE)
+testClas = pmltraining[-intrain,]
+trainClas = pmltraining[intrain,]</code></pre>
+</div>
+<div id="random-forest-on-training-set" class="section level2">
+<h2>Random forest on training set</h2>
+<p>I now want to calculate the random Forest model on the training data</p>
 <pre class="r"><code>library(randomForest)</code></pre>
 <pre><code>## randomForest 4.6-10
 ## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre class="r"><code>modl &lt;- randomForest(classe ~. , data = pmltraining)
-modl</code></pre>
+<pre class="r"><code>modltrain &lt;- randomForest(classe ~. , data = trainClas)
+modltrain</code></pre>
 <pre><code>## 
 ## Call:
-##  randomForest(formula = classe ~ ., data = pmltraining) 
+##  randomForest(formula = classe ~ ., data = trainClas) 
 ##                Type of random forest: classification
 ##                      Number of trees: 500
 ## No. of variables tried at each split: 7
 ## 
-##         OOB estimate of  error rate: 0.27%
+##         OOB estimate of  error rate: 0.67%
 ## Confusion matrix:
-##      A    B    C    D    E  class.error
-## A 5469    2    0    0    0 0.0003655639
-## B   10 3705    3    0    0 0.0034965035
-## C    0    9 3341    2    0 0.0032816229
-## D    0    0   18 3127    2 0.0063552590
-## E    0    0    1    4 3523 0.0014172336</code></pre>
+##      A    B    C    D    E class.error
+## A 3279    3    0    0    1 0.001218398
+## B   15 2209    7    0    0 0.009861049
+## C    0   14 1995    3    0 0.008449304
+## D    0    0   24 1863    2 0.013763896
+## E    0    0    1    7 2109 0.003778932</code></pre>
+<p>The model reports an OOB estimate of 0.65% Let’s try to see how well the model fares on predicting on the test set.</p>
+<pre class="r"><code>pred = predict(modltrain,newdata=testClas)
+confusionMatrix(data = pred,reference = testClas$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2186    9    0    0    0
+##          B    2 1475    5    0    0
+##          C    0    3 1335   12    1
+##          D    0    0    0 1245    6
+##          E    0    0    0    1 1404
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9949          
+##                  95% CI : (0.9931, 0.9964)
+##     No Information Rate : 0.2847          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9936          
+##  Mcnemar's Test P-Value : NA              
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9991   0.9919   0.9963   0.9897   0.9950
+## Specificity            0.9984   0.9989   0.9975   0.9991   0.9998
+## Pos Pred Value         0.9959   0.9953   0.9882   0.9952   0.9993
+## Neg Pred Value         0.9996   0.9981   0.9992   0.9980   0.9989
+## Prevalence             0.2847   0.1935   0.1744   0.1637   0.1836
+## Detection Rate         0.2845   0.1920   0.1737   0.1620   0.1827
+## Detection Prevalence   0.2857   0.1929   0.1758   0.1628   0.1828
+## Balanced Accuracy      0.9987   0.9954   0.9969   0.9944   0.9974</code></pre>
+<p>This reports an accuracy of 0.99, which is extremely good measure. A simple check on the variable importance will reveal something about what variables were used tree will show what variables was used to split the tree on.</p>
+<pre class="r"><code> head(varImp(modltrain))</code></pre>
+<pre><code>##                    Overall
+## roll_belt        750.98032
+## pitch_belt       394.67761
+## yaw_belt         501.73073
+## total_accel_belt 133.18509
+## gyros_belt_x      62.90550
+## gyros_belt_y      67.31223</code></pre>
+<p>This shows that the “roll_belt” feature was most important in deciding the class, followed by pitch_belt and yaw_belt.</p>
 <div id="cross-validationoob-error-rate" class="section level3">
 <h3>Cross validation/OOB error rate</h3>
-<p>using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases. This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned from the model. The calculated OOB error rate is 0.028</p>
+<p>using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases. This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned directly from the model.</p>
 </div>
-</div>
-<div id="prediction" class="section level2">
-<h2>Prediction</h2>
-<p>Predicting the classe for the testdata using the model generated.</p>
-<pre class="r"><code>predicted &lt;- predict(modl, newdata=testcsv)
-predicted</code></pre>
-<pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
-##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
-## Levels: A B C D E</code></pre>
 </div>
 
 

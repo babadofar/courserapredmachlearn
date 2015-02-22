@@ -6,13 +6,13 @@ output: html_document
 ---
 This document was created for the prediction assignment writeup as part of Coursera Practical Machine Learning class (Johns Hopkins University). 
 I want to show how I built a machine learning algorithm to predict activity quality from activity monitors.
-More information on the dataset and the problem domain can be found at (http://groupware.les.inf.puc-rio.br/har)[http://groupware.les.inf.puc-rio.br/har]
+More information on the dataset and the problem can be found at (http://groupware.les.inf.puc-rio.br/har)[http://groupware.les.inf.puc-rio.br/har]
 
 
 ```{r}
 library(caret)
 datacsv <- read.csv('pml-training.csv')
-testcsv <- read.csv('pml-testing.csv')
+
 
 ````
 
@@ -23,7 +23,7 @@ table(datacsv$classe)
 
 ````
 
-The column new_window contains information on the window for prediction. Rows with column "new_window=yes"" contains statisitical calculations on the other columns, so I remove this from the dataset. 
+The column new_window contains information on the time window for prediction. Rows with column "new_window=yes"" contains statistical calculations on the other columns, so I remove this from the dataset. 
 
 
 ```{r}
@@ -47,26 +47,47 @@ names(pmltraining)
 ##Algoritm selection
 I am now left with 52 variables. Random forest is an algorithm that is especially well suited to deal with noisy data without need for extensive preprocessing. It grows decision trees using random sample with replacement (bootstrapping) and random feature selection. It has built in corrections for overfitting, the estimated class is the mean predicion of all generated trees.  
 
+
+##Split dataset into test and train
+To split the dataset into a training and testing set, using 60% of the data for training 
+```{r}
+
+intrain <- createDataPartition(pmltraining$classe,p=0.6, list=FALSE)
+testClas = pmltraining[-intrain,]
+trainClas = pmltraining[intrain,]
+
+````
+
+##Random forest on training set
+I now want to calculate the random Forest model on the training data
 ```{r}
 library(randomForest)
-modl <- randomForest(classe ~. , data = pmltraining)
-modl
+modltrain <- randomForest(classe ~. , data = trainClas)
+modltrain
 ````
+
+The model reports an OOB estimate of 0.65%
+Let's try to see how well the model fares on predicting on the test set.
+
+```{r}
+pred = predict(modltrain,newdata=testClas)
+confusionMatrix(data = pred,reference = testClas$classe)
+
+````
+This reports an accuracy of 0.99, which is extremely good measure. A simple check on the variable importance will reveal something about what variables were used tree will show what variables was used to split the tree on.
+```{r}
+ head(varImp(modltrain))
+
+````
+
+This shows that the "roll_belt" feature was most important in deciding the class, followed by pitch_belt and yaw_belt.
 
 
 ###Cross validation/OOB error rate 
 using random forest, about one third of the data set is left out for testing on each tree generation. After each tree generation, each of the test data cases is run down the constructed tree to get a test set classification. After the complete run is finished, the class for each case with the most votes j is compared to the true class n. The out of bonds error estimate is the proportion of times that j is not equal to the true class of n averaged over all cases.
-This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned from the model. 
-The calculated OOB error rate is 0.028
+This means it is not necessary to perform cross validation as part of preprocessing, and we get the OOB error rate returned directly from the model. 
 
 
 
-##Prediction
-Predicting the classe for the testdata using the model generated.
-```{r}
-predicted <- predict(modl, newdata=testcsv)
-predicted
-
-```
 
 
