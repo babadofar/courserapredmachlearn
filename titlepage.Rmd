@@ -83,11 +83,11 @@ confusionMatrix(data = pred,reference = testClas$classe)
 ````
 This reports an accuracy of 0.99, which is extremely good measure. A simple check on the variable importance will reveal something about what variables were most important in creating the model.
 ```{r}
- head(varImp(modltrain))
+varImpPlot(modltrain, n.var=10)
 
 ````
 
-This shows that the "roll_belt" feature was most important in deciding the class, followed by pitch_belt and yaw_belt.
+This shows that the roll_belt feature was most important in deciding the class, followed by  yaw_belt.
 
 
 
